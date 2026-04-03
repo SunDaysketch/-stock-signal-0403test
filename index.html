@@ -354,13 +354,23 @@ async function fetchStockTwits(sym,signal){
     const BULL_KW=/\b(buy|long|bull|calls?|moon|mooning|upside|breakout|strong|bullish|green|gains?|squeeze|🚀|🟢|💎|🙌)\b/gi;
     const BEAR_KW=/\b(sell|short|bear|puts?|crash|dump|downside|weak|bearish|red|loss|losses|drop|correction|🔴|📉|💀)\b/gi;
     let bull=0,bear=0,neu=0,posts=[];
-    // 同時查詢兩個 subreddit
+    // 同時查詢兩個 subreddit，使用多端點備援（www → api → old）
     const subs=['stocks','wallstreetbets'];
-    const fetches=subs.map(sub=>
-      fetch(`https://www.reddit.com/r/${sub}/search.json?q=${encodeURIComponent(symUp)}&sort=new&limit=50&restrict_sr=1`,{signal,headers:{'Accept':'application/json'}})
-        .then(r=>r.ok?r.json():null).catch(()=>null)
-    );
-    const results=await Promise.all(fetches);
+    const fetchSub=async(sub)=>{
+      const endpoints=[
+        `https://www.reddit.com/r/${sub}/search.json?q=${encodeURIComponent(symUp)}&sort=new&limit=50&restrict_sr=1`,
+        `https://api.reddit.com/r/${sub}/search.json?q=${encodeURIComponent(symUp)}&sort=new&limit=50&restrict_sr=1`,
+        `https://old.reddit.com/r/${sub}/search.json?q=${encodeURIComponent(symUp)}&sort=new&limit=50&restrict_sr=1`
+      ];
+      for(const url of endpoints){
+        try{
+          const r=await fetch(url,{signal,headers:{'Accept':'application/json','User-Agent':'Mozilla/5.0'}});
+          if(r.ok){const d=await r.json();if(d?.data?.children?.length>=0)return d;}
+        }catch(e){if(e.name==='AbortError')throw e;}
+      }
+      return null;
+    };
+    const results=await Promise.all(subs.map(sub=>fetchSub(sub).catch(e=>{if(e.name==='AbortError')throw e;return null;})));
     results.forEach(data=>{
       if(!data?.data?.children)return;
       data.data.children.forEach(({data:p})=>{
@@ -376,7 +386,7 @@ async function fetchStockTwits(sym,signal){
       });
     });
     const total=bull+bear+neu;
-    if(!total)return{bullish:0,bearish:0,neutral:0,total:0};
+    if(!total)return{bullish:0,bearish:0,neutral:0,total:0,bullPct:0,bearPct:0};
     return{
       bullish:bull,bearish:bear,neutral:neu,total,
       bullPct:Math.round(bull/total*100),
