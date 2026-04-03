@@ -798,7 +798,7 @@ function genSummary(data){
     const recFirst=analyst?.recommendations?.[0];
     const tot=recFirst?((recFirst.buy||0)+(recFirst.strongBuy||0)+(recFirst.hold||0)+(recFirst.sell||0)+(recFirst.strongSell||0)):0;
     const buyPct=tot>0?((recFirst.buy||0)+(recFirst.strongBuy||0))/tot*100:0;
-    txt+=`分析師共識強烈看多（${buyPct.toFixed(0)}%買入、目標價$${pf(tpMean,0)}、+${upside}%空間），`;
+    txt+=`分析師共識強烈看多（${buyPct.toFixed(0)}%買入、目標價$${pf(tpMean,0)}、${+upside>=0?'+':''}${upside}%空間），`;
   }
 
   // Social sentiment contrast
@@ -981,7 +981,7 @@ function render(r){
     return{rsi,score:Math.round(clamp(sc/10.68*100,0,100)),adx}});
 
   const adxVal=+(d.adx?.adx||0),rsiVal=+(d.rsi?.rsi||50),macdH=+(d.macd?.macd_hist||0);
-  const bbPos=d.bbands?(r.price-+d.bbands.lower_band)/(+d.bbands.upper_band-+d.bbands.lower_band):0.5;
+  const _bbRange=d.bbands?(+d.bbands.upper_band-+d.bbands.lower_band):0;const bbPos=_bbRange>0?(r.price-+d.bbands.lower_band)/_bbRange:0.5;
 
   const st=r.strategy;const vol=r.vol;
   const marginYOY=f.margin?.yoy||0;const marginCur=f.margin?.current||0;
@@ -1447,7 +1447,7 @@ function render(r){
       </div>
       <div class="collapse-body" id="congress-body"><div style="padding-top:14px">`;
     if(!cg||cg.noData){
-      h+=`<div style="opacity:.3;padding:8px 0">${!cg?'查詢失敗（Senate/House Stock Watcher API 可能有 CORS 限制，建議在 Netlify 部署後使用）。':'暫無該股票的國會交易記錄。'}</div>`;
+      h+=`<div style="opacity:.3;padding:8px 0">${!cg?'查詢失敗（Senate/House Stock Watcher API 可能有 CORS 限制，建議使用熱門股票（如 NVDA、AAPL）查詢）。':'暫無該股票的國會交易記錄。'}</div>`;
     } else {
       h+=`<div class="g3" style="margin-bottom:14px">
         <div class="card2 bull"><div style="font-size:10px;opacity:.4;margin-bottom:4px">買入交易</div><div style="font-size:22px;font-weight:800;font-family:var(--mono);color:var(--grn)">${cg.buys}</div></div>
