@@ -1684,16 +1684,16 @@ function render(r){
     let dcfBase,dcfGrowth,dcfLabel,dcfSrc;
     if(useFCF){
       dcfBase=av.latestFCF/sharesApprox;
-      dcfGrowth=Math.min(Math.max(av.fcfCAGR,0),0.30);
+      dcfGrowth=Math.min(Math.max(av.fcfCAGR,-0.20),0.30);
       dcfLabel='FCF/股 (Alpha Vantage)';
-      dcfSrc='FCF CAGR '+pf(av.fcfCAGR*100,1)+'%';
+      dcfSrc='FCF CAGR '+(av.fcfCAGR>=0?'+':'')+pf(av.fcfCAGR*100,1)+'%';
     }else{
       const dcfEps=mt.epsBasicExclExtraTTM||mt.epsNormalizedAnnual||0;
       const rawGr=mt.epsGrowth3Y!=null?mt.epsGrowth3Y/100:null;
       dcfBase=dcfEps;
-      dcfGrowth=Math.min(Math.max(rawGr!=null?rawGr:0.10,0),0.30);
+      dcfGrowth=Math.min(Math.max(rawGr!=null?rawGr:0.10,-0.20),0.30);
       dcfLabel='EPS TTM (代理)';
-      dcfSrc=mt.epsGrowth3Y!=null?'歷史EPS成長':'預設10%';
+      dcfSrc=rawGr!=null?'歷史EPS成長 '+(rawGr>=0?'+':'')+pf(rawGr*100,1)+'%':'預設 10%';
     }
     const dcfRate=0.10,dcfTerminal=0.03;
     if(dcfBase>0){
@@ -1710,6 +1710,7 @@ function render(r){
       const dcfValColor=mos>10?'var(--grn)':mos>-10?'var(--ylw)':'var(--red)';
       const colHeader=useFCF?'預測 FCF/股':'預測 EPS';
       const fcfModeBadge=useFCF?`<span class="pill info" style="font-size:10px">FCF 模式</span>`:'';
+      const declineWarning=dcfGrowth<0?`<span class="pill bear" style="font-size:10px">⚠️ 衰退假設 ${pf(dcfGrowth*100,1)}%</span>`:'';
       const rowsHtml=dcfRows.map(y=>`<tr style="border-top:1px solid var(--bd)"><td style="padding:5px 8px">第 ${y.yr} 年</td><td style="padding:5px 8px;text-align:right;font-family:var(--mono)">$${pf(y.val,2)}</td><td style="padding:5px 8px;text-align:right;font-family:var(--mono);opacity:.7">$${pf(y.pv,2)}</td></tr>`).join('');
       // FCF history table (only when AV mode)
       let fcfHistHtml='';
@@ -1725,14 +1726,16 @@ function render(r){
           </tr></thead><tbody>${fcfRowsHtml}</tbody>
         </table></div>`;
       }
-      const disclaimerTxt=useFCF?'本 DCF 以 Alpha Vantage 實際自由現金流 (OCF − CapEx) 計算每股 FCF，採用固定 10% 折現率。':'本 DCF 以 EPS TTM 作為自由現金流代理指標，採用固定 10% 折現率。';
+      const disclaimerTxt=useFCF
+        ?`本 DCF 以 Alpha Vantage 實際自由現金流 (OCF − CapEx) 計算每股 FCF，採用固定 10% 折現率${dcfGrowth<0?'；成長率為負值（衰退假設），第 5 年後終值仍以 3% 永續成長計算（隱含困境後復甦假設）':''}`
+        :`本 DCF 以 EPS TTM 作為自由現金流代理指標，採用固定 10% 折現率${dcfGrowth<0?'；成長率為負值（衰退假設），第 5 年後終值仍以 3% 永續成長計算（隱含困境後復甦假設）':''}`;
       h+=`<div class="card">
         <div class="collapse-hdr" onclick="toggleCollapse('dcf-body')">
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <div class="sec-title" style="margin-bottom:0">DCF / 估值概覽</div>
             <span class="pill ${mosCls}" style="font-size:10px">內在價值 $${pf(dcfIV,0)}</span>
             <span class="pill ${mosCls}" style="font-size:10px">${mosLabel}</span>
-            ${fcfModeBadge}
+            ${fcfModeBadge}${declineWarning}
           </div>
           <span class="collapse-arrow" id="dcf-body-arrow">▼</span>
         </div>
