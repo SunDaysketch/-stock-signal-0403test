@@ -659,7 +659,7 @@ async function fetchYahooOHLCV(sym,range,interval,signal){
         low:+(q.low[i]||0).toFixed(4),
         close:+(q.close[i]||0).toFixed(4),
         volume:q.volume[i]||0
-      })).filter(b=>b.close>0).reverse();
+      })).filter(b=>b.close>0&&b.high>0&&b.low>0&&b.open>0).reverse();
       if(bars.length<20)continue;
       console.log(`Yahoo OHLCV ${sym} ${interval} OK via proxy, bars=${bars.length}`);
       return bars;
@@ -1313,7 +1313,9 @@ async function analyze(){
     const stockTwitsData=await fetchStockTwits(sym,signal).catch(e=>{if(e.name==='AbortError')throw e;return null});
     if(signal.aborted)throw new DOMException('Aborted','AbortError');
     showP('計算 Volume Profile...');
-    const vpData=calcVolumeProfile(tsVals,price);
+    // VP 固定使用最近 120 根 K 線（約 6 個月），確保不同環境資料量一致
+    const vpBars=tsVals.slice(0,Math.min(tsVals.length,120));
+    const vpData=calcVolumeProfile(vpBars,price);
     console.log('VP result:',vpData);
 
     showP('計算綜合評分...');
